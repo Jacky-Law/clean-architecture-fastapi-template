@@ -1,0 +1,25 @@
+version: "3.4"
+services:
+  app:
+    container_name: app
+    build:
+      dockerfile: "./dockerfile"
+      target: development
+    depends_on:
+      - postgres
+    environment:
+      - DB_HOST=postgres
+      - DB_PASSWORD=123456
+      - API_HOST=app
+      - PYTHONDONTWRITEBYTECODE=1
+    ports:
+      - "{{ cookiecutter.port }}:8000"
+
+  postgres:
+    container_name: postgres
+    image: postgres:12
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=123456
+    ports:
+      - "54321:5432"

@@ -1,0 +1,72 @@
+# Dockerfile
+# Uses multi-stage builds requiring Docker 17.05 or higher
+# See https://docs.docker.com/develop/develop-images/multistage-build/
+
+# Creating a python base with shared environment variables
+FROM python:3.9-slim as python-base
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
+ENV PATH=/root/.local/bin:$PATH
+
+# builder-base is used to build dependencies
+FROM python-base as builder-base
+# RUN apt-get update \
+#     && apt-get install --no-install-recommends -y \
+#     curl \
+#     build-essential
+COPY ./requirements.txt ./requirements.txt
+RUN pip install --user -r ./requirements.txt
+
+
+# 'development' stage installs all dev deps and can be used to develop code.
+# For example using docker-compose to mount local volume under /app
+FROM python-base as development
+ENV FASTAPI_ENV=development
+
+# Copying in our entrypoint
+COPY ./docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+COPY --from=builder-base /root/.local /root/.local
+COPY ./requirements-dev.txt ./requirements-dev.txt
+RUN pip install --user -r ./requirements-dev.txt
+
+COPY ./src /src
+COPY ./tests /tests
+RUN pip install --user -e /src
+
+WORKDIR /src
+
+EXPOSE 8000
+ENTRYPOINT /docker-entrypoint.sh $0 $@
+CMD ["uvicorn", "--reload", "--host=0.0.0.0", "--port=8000", "{{ cookiecutter.service_name }}.entrypoints.fastapi_app:app"]
+
+
+# 'test' stage runs our unit tests with pytest and
+# coverage.  Build will fail if test coverage is under 95%
+FROM development AS test
+RUN coverage run -m pytest /tests/unit
+RUN coverage report --fail-under 95
+
+
+# 'production' stage uses the clean 'python-base' stage and copyies
+# in only our runtime deps that were installed in the 'builder-base'
+FROM python-base as production
+ENV FASTAPI_ENV=production
+
+COPY --from=builder-base /root/.local /root/.local
+COPY ./docker/gunicorn_conf.py /gunicorn_conf.py
+
+COPY ./docker/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+COPY ./src /src
+RUN pip install --user -e /src
+
+WORKDIR /src
+
+ENTRYPOINT /docker-entrypoint.sh $0 $@
+CMD [ "gunicorn", "--worker-class uvicorn.workers.UvicornWorker", "--config /gunicorn_conf.py", "{{ cookiecutter.service_name }}.entrypoints.fastapi_app:app"]

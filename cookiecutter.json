@@ -1,0 +1,6 @@
+{
+    "project_name": "helloworld",
+    "service_name": "helloworld",
+    "version": "0.1",
+    "port": "8000"
+}
