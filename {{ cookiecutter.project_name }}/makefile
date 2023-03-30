@@ -45,7 +45,8 @@ pre-commit-check-all: pre-commit-install
 	pre-commit run --all-files
 
 poetry-self-install:
-	curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+	# curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+	pip insatll poetry
 
 poetry-setup:
 	poetry update && poetry install
