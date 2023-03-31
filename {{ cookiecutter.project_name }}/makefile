@@ -3,34 +3,34 @@
 export COMPOSE_DOCKER_CLI_BUILD=1
 export DOCKER_BUILDKIT=1
 
-compose-all: compose-down compose-build compose-up compose-test
+all: down build up test
 
-compose-build: poetry-export
+build:
 	docker-compose build
 
-compose-up:
+up:
 	docker-compose up -d
 
-compose-down:
+down:
 	docker-compose down --remove-orphans
 
-compose-bash: compose-up
+bash: up
 	docker-compose exec app bash
 
-compose-test: compose-up
+test: up
 	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/unit /tests/integration /tests/e2e
 
-compose-unit-tests: compose-up
+test-unit: up
 	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/unit
 
-compose-integration-tests: compose-up
+test-integration: up
 	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/integration
 
-compose-e2e-tests: compose-up
+test-e2e: up
 	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/e2e
 
-compose-logs:
-	docker-compose logs app | tail -150
+logs:
+	docker-compose logs app | tail -1000
 
 black:
 	black -l 86 $$(find * -name '*.py')
@@ -58,6 +58,6 @@ poetry-test-unit: poetry-setup
 	poetry run pytest --cov={{ cookiecutter.service_name }} ./tests/unit
 
 poetry-export:
-	# poetry update && \
+	poetry update && \
 	poetry export -o "./requirements.txt" && \
 	poetry export -o "./requirements-dev.txt" --with dev
