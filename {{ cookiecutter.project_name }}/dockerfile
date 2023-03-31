@@ -3,7 +3,7 @@
 # See https://docs.docker.com/develop/develop-images/multistage-build/
 
 # Creating a python base with shared environment variables
-FROM python:3.9-slim as python-base
+FROM python:3.11-slim as python-base
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=off \
@@ -13,12 +13,15 @@ ENV PATH=/root/.local/bin:$PATH
 
 # builder-base is used to build dependencies
 FROM python-base as builder-base
-# RUN apt-get update \
-#     && apt-get install --no-install-recommends -y \
-#     curl \
-#     build-essential
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y \
+    curl \
+    build-essential
 COPY ./requirements.txt ./requirements.txt
 RUN pip install --user -r ./requirements.txt
+# RUN pip install poetry
+# COPY ./pyproject.toml ./pyproject.toml
+# RUN poetry install
 
 
 # 'development' stage installs all dev deps and can be used to develop code.
@@ -33,6 +36,9 @@ RUN chmod +x /docker-entrypoint.sh
 COPY --from=builder-base /root/.local /root/.local
 COPY ./requirements-dev.txt ./requirements-dev.txt
 RUN pip install --user -r ./requirements-dev.txt
+# RUN pip install poetry
+# COPY ./pyproject.toml ./pyproject.toml
+# RUN poetry install --dev
 
 COPY ./src /src
 COPY ./tests /tests
